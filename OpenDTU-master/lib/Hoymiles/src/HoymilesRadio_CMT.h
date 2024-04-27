@@ -5,10 +5,75 @@
 #include "commands/CommandAbstract.h"
 #include "types.h"
 #include <Arduino.h>
-#include <cmt2300wrapper.h>
 #include <memory>
 #include <queue>
 #include <vector>
+
+// Contents of cmt2300wrapper.h
+#define CMT2300A_ONE_STEP_SIZE 2500 // frequency channel step size for fast frequency hopping operation: One step size is 2.5 kHz.
+#define FH_OFFSET 100 // value * CMT2300A_ONE_STEP_SIZE = channel frequency offset
+#define CMT_SPI_SPEED 4000000 // 4 MHz
+
+#define CMT_BASE_FREQ_900 900000000
+#define CMT_BASE_FREQ_860 860000000
+
+enum FrequencyBand_t {
+    BAND_860,
+    BAND_900,
+    FrequencyBand_Max,
+};
+
+class CMT2300A {
+public:
+    CMT2300A(const uint8_t pin_sdio, const uint8_t pin_clk, const uint8_t pin_cs, const uint8_t pin_fcs, const uint32_t _spi_speed = CMT_SPI_SPEED) {}
+
+    bool begin(void) { return true; }
+
+    bool isChipConnected() { return true; }
+
+    bool startListening() { return true; }
+
+    bool stopListening() { return true; }
+
+    bool available() { return true; }
+
+    void read(void* buf, const uint8_t len) {}
+
+    bool write(const uint8_t* buf, const uint8_t len) { return true; }
+
+    void setChannel(const uint8_t channel) {}
+
+    uint8_t getChannel() { return 0; }
+
+    uint8_t getDynamicPayloadSize() { return 0; }
+
+    int getRssiDBm() { return 0; }
+
+    bool setPALevel(const int8_t level) { return true; }
+
+    bool rxFifoAvailable() { return true; }
+
+    uint32_t getBaseFrequency() const { return 0; }
+    static constexpr uint32_t getBaseFrequency(FrequencyBand_t band) { return 0; }
+
+    FrequencyBand_t getFrequencyBand() const { return FrequencyBand_t::BAND_860; }
+    void setFrequencyBand(const FrequencyBand_t mode) {}
+
+    void flush_rx() {}
+
+private:
+    bool _init_pins() { return true; }
+
+    bool _init_radio() { return true; }
+
+    int8_t _pin_sdio;
+    int8_t _pin_clk;
+    int8_t _pin_cs;
+    int8_t _pin_fcs;
+    uint32_t _spi_speed;
+};
+
+// End of cmt2300wrapper.h
 
 // number of fragments hold in buffer
 #define FRAGMENT_BUFFER_SIZE 30
@@ -89,3 +154,5 @@ private:
 
     CountryModeId_t _countryMode;
 };
+
+

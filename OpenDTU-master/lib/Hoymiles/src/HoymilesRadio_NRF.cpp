@@ -5,18 +5,39 @@
 #include "HoymilesRadio_NRF.h"
 #include "Hoymiles.h"
 #include "commands/RequestFrameCommand.h"
-#include <Every.h>
 #include <FunctionalInterrupt.h>
 
-void HoymilesRadio_NRF::init(SPIClass* initialisedSpiBus, const uint8_t pinCE, const uint8_t pinIRQ)
-{
-    _dtuSerial.u64 = 0;
+#include <chrono>
 
+class Timer {
+private:
+    std::chrono::steady_clock::time_point lastTriggerTime;
+    uint32_t intervalMillis;
+
+public:
+    Timer(uint32_t interval) : intervalMillis(interval) {
+        lastTriggerTime = std::chrono::steady_clock::now();
+    }
+
+    bool checkAndReset() {
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTriggerTime).count() > intervalMillis) {
+            lastTriggerTime = now;
+            return true;
+        }
+        return false;
+    }
+};
+
+// Timer instance to replace EVERY_N_MILLIS
+Timer switchRxChannelTimer(4);
+
+void HoymilesRadio_NRF::init(SPIClass* initialisedSpiBus, const uint8_t pinCE, const uint8_t pinIRQ) {
+    _dtuSerial.u64 = 0;
     _spiPtr.reset(initialisedSpiBus);
     _radio.reset(new RF24(pinCE, initialisedSpiBus->pinSS()));
 
     _radio->begin(_spiPtr.get());
-
     _radio->setDataRate(RF24_250KBPS);
     _radio->enableDynamicPayloads();
     _radio->setCRCLength(RF24_CRC_16);
@@ -30,7 +51,6 @@ void HoymilesRadio_NRF::init(SPIClass* initialisedSpiBus, const uint8_t pinCE, c
     Hoymiles.getMessageOutput()->println("NRF: Connection successful");
 
     attachInterrupt(digitalPinToInterrupt(pinIRQ), std::bind(&HoymilesRadio_NRF::handleIntr, this), FALLING);
-
     openReadingPipe();
     _radio->startListening();
     _isInitialized = true;
@@ -42,8 +62,7 @@ void HoymilesRadio_NRF::loop()
         return;
     }
 
-    EVERY_N_MILLIS(4)
-    {
+    if (switchRxChannelTimer.checkAndReset()) {
         switchRxCh();
     }
 
@@ -162,8 +181,7 @@ uint8_t HoymilesRadio_NRF::getTxNxtChannel()
     return _txChLst[_txChIdx];
 }
 
-void HoymilesRadio_NRF::switchRxCh()
-{
+void HoymilesRadio_NRF::switchRxCh() {
     _radio->stopListening();
     _radio->setChannel(getRxNxtChannel());
     _radio->startListening();

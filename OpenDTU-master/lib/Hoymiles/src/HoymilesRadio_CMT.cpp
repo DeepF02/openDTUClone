@@ -6,11 +6,10 @@
 #include "Hoymiles.h"
 #include "crc.h"
 #include <FunctionalInterrupt.h>
-#include <frozen/map.h>
 
 constexpr CountryFrequencyDefinition_t make_value(FrequencyBand_t Band, uint32_t Freq_Legal_Min, uint32_t Freq_Legal_Max, uint32_t Freq_Default, uint32_t Freq_StartUp)
 {
-    // frequency can not be lower than actual initailized base freq + 250000
+    // frequency can not be lower than actual initialized base freq + 250000
     uint32_t minFrequency = CMT2300A::getBaseFrequency(Band) + HoymilesRadio_CMT::getChannelWidth();
 
     // =923500, 0xFF does not work
@@ -20,11 +19,25 @@ constexpr CountryFrequencyDefinition_t make_value(FrequencyBand_t Band, uint32_t
     return v;
 }
 
-constexpr frozen::map<CountryModeId_t, CountryFrequencyDefinition_t, 3> countryDefinition = {
+struct SimpleMapEntry {
+    CountryModeId_t id;
+    CountryFrequencyDefinition_t definition;
+};
+
+constexpr SimpleMapEntry countryDefinitions[] = {
     { CountryModeId_t::MODE_EU, make_value(FrequencyBand_t::BAND_860, 863e6, 870e6, 865e6, 868e6) },
     { CountryModeId_t::MODE_US, make_value(FrequencyBand_t::BAND_900, 905e6, 925e6, 918e6, 915e6) },
     { CountryModeId_t::MODE_BR, make_value(FrequencyBand_t::BAND_900, 915e6, 928e6, 918e6, 915e6) },
 };
+
+const CountryFrequencyDefinition_t& getCountryDefinition(CountryModeId_t mode) {
+    for (auto& entry : countryDefinitions) {
+        if (entry.id == mode) {
+            return entry.definition;
+        }
+    }
+    throw std::out_of_range("Invalid country mode");
+}
 
 uint32_t HoymilesRadio_CMT::getFrequencyFromChannel(const uint8_t channel) const
 {
